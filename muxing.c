@@ -121,15 +121,15 @@ static int write_frame(AVFormatContext *fmt_ctx, AVCodecContext *c,
 
 /* Add an output stream. */
 static void add_stream(OutputStream *ost, AVFormatContext *oc,
-                       AVCodec **codec,
                        enum AVCodecID codec_id)
 {
+    AVCodec *codec;
     AVCodecContext *c;
     int i;
 
     /* find the encoder */
-    *codec = avcodec_find_encoder(codec_id);
-    if (!(*codec)) {
+    codec = avcodec_find_encoder(codec_id);
+    if (!codec) {
         fprintf(stderr, "Could not find encoder for '%s'\n",
                 avcodec_get_name(codec_id));
         exit(1);
@@ -141,32 +141,32 @@ static void add_stream(OutputStream *ost, AVFormatContext *oc,
         exit(1);
     }
     ost->st->id = oc->nb_streams-1;
-    c = avcodec_alloc_context3(*codec);
+    c = avcodec_alloc_context3(codec);
     if (!c) {
         fprintf(stderr, "Could not alloc an encoding context\n");
         exit(1);
     }
     ost->enc = c;
 
-    switch ((*codec)->type) {
+    switch (codec->type) {
     case AVMEDIA_TYPE_AUDIO:
-        c->sample_fmt  = (*codec)->sample_fmts ?
-            (*codec)->sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
+        c->sample_fmt  = codec->sample_fmts ?
+            codec->sample_fmts[0] : AV_SAMPLE_FMT_FLTP;
         c->bit_rate    = 64000;
         c->sample_rate = 44100;
-        if ((*codec)->supported_samplerates) {
-            c->sample_rate = (*codec)->supported_samplerates[0];
-            for (i = 0; (*codec)->supported_samplerates[i]; i++) {
-                if ((*codec)->supported_samplerates[i] == 44100)
+        if (codec->supported_samplerates) {
+            c->sample_rate = codec->supported_samplerates[0];
+            for (i = 0; codec->supported_samplerates[i]; i++) {
+                if (codec->supported_samplerates[i] == 44100)
                     c->sample_rate = 44100;
             }
         }
         c->channels        = av_get_channel_layout_nb_channels(c->channel_layout);
         c->channel_layout = AV_CH_LAYOUT_STEREO;
-        if ((*codec)->channel_layouts) {
-            c->channel_layout = (*codec)->channel_layouts[0];
-            for (i = 0; (*codec)->channel_layouts[i]; i++) {
-                if ((*codec)->channel_layouts[i] == AV_CH_LAYOUT_STEREO)
+        if (codec->channel_layouts) {
+            c->channel_layout = codec->channel_layouts[0];
+            for (i = 0; codec->channel_layouts[i]; i++) {
+                if (codec->channel_layouts[i] == AV_CH_LAYOUT_STEREO)
                     c->channel_layout = AV_CH_LAYOUT_STEREO;
             }
         }
@@ -248,14 +248,13 @@ static AVFrame *alloc_audio_frame(enum AVSampleFormat sample_fmt,
     return frame;
 }
 
-static void open_audio(AVFormatContext *oc, AVCodec *codec, OutputStream *ost, AVDictionary *opt_arg)
+static void open_audio(AVFormatContext *oc, OutputStream *ost, AVDictionary *opt_arg)
 {
-    AVCodecContext *c;
+    AVCodecContext *c = ost->enc;
     int nb_samples;
     int ret;
     AVDictionary *opt = NULL;
-
-    c = ost->enc;
+    const AVCodec *codec = c->codec;
 
     /* open it */
     av_dict_copy(&opt, opt_arg, 0);
@@ -411,11 +410,12 @@ static AVFrame *alloc_picture(enum AVPixelFormat pix_fmt, int width, int height)
     return picture;
 }
 
-static void open_video(AVFormatContext *oc, AVCodec *codec, OutputStream *ost, AVDictionary *opt_arg)
+static void open_video(AVFormatContext *oc, OutputStream *ost, AVDictionary *opt_arg)
 {
     int ret;
     AVCodecContext *c = ost->enc;
     AVDictionary *opt = NULL;
+    const AVCodec *codec = c->codec;
 
     av_dict_copy(&opt, opt_arg, 0);
 
@@ -546,7 +546,6 @@ int main(int argc, char **argv)
     const char *filename;
     AVOutputFormat *fmt;
     AVFormatContext *oc;
-    AVCodec *audio_codec, *video_codec;
     int ret;
     int have_video = 0, have_audio = 0;
     int encode_video = 0, encode_audio = 0;
@@ -584,12 +583,12 @@ int main(int argc, char **argv)
     /* Add the audio and video streams using the default format codecs
      * and initialize the codecs. */
     if (fmt->video_codec != AV_CODEC_ID_NONE) {
-        add_stream(&video_st, oc, &video_codec, fmt->video_codec);
+        add_stream(&video_st, oc, fmt->video_codec);
         have_video = 1;
         encode_video = 1;
     }
     if (fmt->audio_codec != AV_CODEC_ID_NONE) {
-        add_stream(&audio_st, oc, &audio_codec, fmt->audio_codec);
+        add_stream(&audio_st, oc, fmt->audio_codec);
         have_audio = 1;
         encode_audio = 1;
     }
@@ -597,10 +596,10 @@ int main(int argc, char **argv)
     /* Now that all the parameters are set, we can open the audio and
      * video codecs and allocate the necessary encode buffers. */
     if (have_video)
-        open_video(oc, video_codec, &video_st, opt);
+        open_video(oc, &video_st, opt);
 
     if (have_audio)
-        open_audio(oc, audio_codec, &audio_st, opt);
+        open_audio(oc, &audio_st, opt);
 
     av_dump_format(oc, 0, filename, 1);
 
