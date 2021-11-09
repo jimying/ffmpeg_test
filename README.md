@@ -1,5 +1,8 @@
 # ffmpeg_test
-ffmpeg sample test
+ffmpeg samples test
 
-Test on platform Linux
+My target: To learn ffmpeg and use it to develop!
+
+
+Samples already test on platform Linux
 
