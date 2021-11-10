@@ -168,8 +168,7 @@ int main(int argc, char *argv[])
             }
 
             //update pts/dts
-            pkt.pts = av_rescale_q(pkt.pts, in_video_strm->time_base, out_video_strm->time_base);
-            pkt.dts = av_rescale_q(pkt.dts, in_video_strm->time_base, out_video_strm->time_base);
+            av_packet_rescale_ts(&pkt, in_video_strm->time_base, out_video_strm->time_base);
 
             av_interleaved_write_frame(ofmt_ctx, &pkt);
         }
