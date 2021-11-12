@@ -20,9 +20,14 @@ OBJS_STRM = $(addprefix $(BUILD)/, $(addsuffix .o,$(basename $(SRCS_STRM))))
 SRCS_MUX = muxing.c
 OBJS_MUX = $(addprefix $(BUILD)/, $(addsuffix .o,$(basename $(SRCS_MUX))))
 
-all: stream mux
+
+# remuxing
+SRCS_REMUX = remuxing.c
+OBJS_REMUX = $(addprefix $(BUILD)/, $(addsuffix .o,$(basename $(SRCS_REMUX))))
+
+all: stream mux remux
 clean:
-	@rm -rf stream mux $(BUILD) log
+	@rm -rf stream mux remux $(BUILD) log
 
 $(BUILD): Makefile
 	@mkdir -p $(BUILD)
@@ -33,10 +38,14 @@ stream: $(OBJS_STRM)
 mux: $(OBJS_MUX)
 	$(CC) $(LDFLAGS) -o $@ $^  $(LIBS)
 
+remux: $(OBJS_REMUX)
+	$(CC) $(LDFLAGS) -o $@ $^  $(LIBS)
+
 $(BUILD)/%.o: %.c Makefile | $(BUILD)
 	$(CC) $(CFLAGS) $(INC) -c $< -o $@ $(DFLAGS)
 
 ##################################################
 -include $(OBJS_STRM:.o=.d)
 -include $(OBJS_MUX:.o=.d)
+-include $(OBJS_REMUX:.o=.d)
 
